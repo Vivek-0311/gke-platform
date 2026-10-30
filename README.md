@@ -4,7 +4,7 @@ A private GKE setup on Google Cloud, built with Terraform, deployed from GitHub 
 
 I made this as a smaller, public version of what I work on at my job (DevOps for an enterprise AI platform). It uses the same ideas, but there's no client code in here.
 
-![Architecture](docs/architecture.png)
+[![Architecture](https://cdn.jsdelivr.net/gh/Vivek-0311/gke-platform@main/docs/architecture.png)](docs/architecture.png)
 
 <details>
 <summary>Same diagram as Mermaid</summary>
