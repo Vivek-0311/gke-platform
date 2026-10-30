@@ -1,0 +1,65 @@
+{
+  "title": "demo-app",
+  "uid": "demo-app",
+  "schemaVersion": 39,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "30s",
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "type": "query",
+        "datasource": { "type": "prometheus" },
+        "query": "label_values(http_requests_total, namespace)",
+        "current": { "text": "demo", "value": "demo" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Requests per second",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "sum by (code) (rate(http_requests_total{namespace=\"$namespace\"}[5m]))", "legendFormat": "{{code}}" }
+      ]
+    },
+    {
+      "title": "Error rate (5xx)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit", "thresholds": { "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 0.05 } ] } } },
+      "targets": [
+        { "expr": "sum(rate(http_requests_total{namespace=\"$namespace\",code=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{namespace=\"$namespace\"}[5m])), 1e-9)" }
+      ]
+    },
+    {
+      "title": "Ready pods",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 8 },
+      "targets": [
+        { "expr": "kube_deployment_status_replicas_available{namespace=\"$namespace\",deployment=\"demo-app\"}" }
+      ]
+    },
+    {
+      "title": "Latency p50 / p95 / p99",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "fieldConfig": { "defaults": { "unit": "s" } },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[5m])))", "legendFormat": "p50" },
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[5m])))", "legendFormat": "p95" },
+        { "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"$namespace\"}[5m])))", "legendFormat": "p99" }
+      ]
+    },
+    {
+      "title": "CPU and memory per pod",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=\"$namespace\",container=\"app\"}[5m]))", "legendFormat": "cpu {{pod}}" },
+        { "expr": "sum by (pod) (container_memory_working_set_bytes{namespace=\"$namespace\",container=\"app\"}) / 1024 / 1024", "legendFormat": "MiB {{pod}}" }
+      ]
+    }
+  ]
+}

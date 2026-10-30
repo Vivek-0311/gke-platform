@@ -1,0 +1,25 @@
+{{- if .Values.networkPolicy.enabled }}
+# Enforced by GKE Dataplane V2. Only same-namespace pods and the listed
+# namespaces (e.g. monitoring for Prometheus scrapes) can reach the app.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "demo-app.name" . }}
+  labels:
+    {{- include "demo-app.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "demo-app.selectorLabels" . | nindent 6 }}
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - podSelector: {}
+        {{- range .Values.networkPolicy.allowedNamespaces }}
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: {{ . }}
+        {{- end }}
+      ports:
+        - port: http
+{{- end }}

@@ -1,0 +1,6 @@
+demo-app {{ .Values.image.tag | default .Chart.AppVersion }} deployed to namespace {{ .Release.Namespace }}.
+
+Try it:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "demo-app.name" . }} 8080:{{ .Values.service.port }}
+  curl localhost:8080/
+  curl localhost:8080/metrics

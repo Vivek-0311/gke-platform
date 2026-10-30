@@ -1,0 +1,42 @@
+{{- if and .Values.monitoring.prometheusRule (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1") }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "demo-app.name" . }}
+  labels:
+    {{- include "demo-app.labels" . | nindent 4 }}
+    release: {{ .Values.monitoring.releaseLabel }}
+spec:
+  groups:
+    - name: demo-app
+      rules:
+        - alert: DemoAppHighErrorRate
+          expr: |
+            sum(rate(http_requests_total{namespace="{{ .Release.Namespace }}",code=~"5.."}[5m]))
+              /
+            clamp_min(sum(rate(http_requests_total{namespace="{{ .Release.Namespace }}"}[5m])), 1e-9)
+              > 0.05
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: More than 5% of demo-app requests are failing
+        - alert: DemoAppSlowResponses
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_request_duration_seconds_bucket{namespace="{{ .Release.Namespace }}"}[5m]))
+            ) > 0.5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: demo-app p95 latency is above 500ms
+        - alert: DemoAppNoReadyPods
+          expr: |
+            kube_deployment_status_replicas_available{namespace="{{ .Release.Namespace }}",deployment="{{ include "demo-app.name" . }}"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: demo-app has no available replicas
+{{- end }}
