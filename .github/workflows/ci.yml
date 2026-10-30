@@ -1,0 +1,51 @@
+# Runs on every pull request and push: no cloud access needed.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.2
+      - name: fmt
+        run: terraform fmt -check -recursive terraform
+      - name: validate
+        working-directory: terraform/envs/dev
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: app/go.mod
+      - run: test -z "$(gofmt -l .)"
+      - run: go vet ./...
+      - run: go test -race ./...
+      - name: docker build
+        run: docker build --build-arg VERSION=${{ github.sha }} -t demo-app:ci .
+
+  helm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - run: helm lint helm/demo-app
+      - name: render with monitoring CRDs present
+        run: helm template demo helm/demo-app --api-versions monitoring.coreos.com/v1 > /dev/null

@@ -1,0 +1,71 @@
+# Build, push and deploy on merge to main.
+# Auth is keyless: GitHub's OIDC token -> Workload Identity Federation -> deployer SA.
+# Set these repository variables from `terraform output github_variables`:
+#   GCP_PROJECT_ID, GCP_REGION, GKE_CLUSTER, GKE_LOCATION,
+#   GCP_WIF_PROVIDER, GCP_DEPLOYER_SA, IMAGE_PREFIX, APP_GSA
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    paths: ["app/**", "helm/**", ".github/workflows/deploy.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write   # needed to request the OIDC token
+
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+env:
+  IMAGE: ${{ vars.IMAGE_PREFIX }}/demo-app:${{ github.sha }}
+  NAMESPACE: demo
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: build and push image
+        run: |
+          gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+          docker build --build-arg VERSION=${{ github.sha }} -t "$IMAGE" app
+          docker push "$IMAGE"
+
+      # Private cluster: reach the control plane through its DNS endpoint,
+      # authorised by IAM, so no runner IP allow-list is needed.
+      - uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ vars.GKE_CLUSTER }}
+          location: ${{ vars.GKE_LOCATION }}
+          dns_based_endpoint: true
+
+      - uses: azure/setup-helm@v4
+
+      - name: helm upgrade (rolls back automatically on failure)
+        run: |
+          helm upgrade --install demo-app helm/demo-app \
+            --namespace "$NAMESPACE" --create-namespace \
+            --set image.repository="${{ vars.IMAGE_PREFIX }}/demo-app" \
+            --set image.tag="${{ github.sha }}" \
+            --set serviceAccount.gcpServiceAccount="${{ vars.APP_GSA }}" \
+            --set greetingSecret="projects/${{ vars.GCP_PROJECT_ID }}/secrets/demo-app-greeting" \
+            --atomic --wait --timeout 5m
+
+      - name: smoke test
+        run: |
+          kubectl -n "$NAMESPACE" rollout status deploy/demo-app --timeout 2m
+          kubectl -n "$NAMESPACE" run smoke-$RANDOM --rm -i --restart=Never \
+            --image=curlimages/curl:8.10.1 -- curl -fsS http://demo-app/healthz
