@@ -25,6 +25,8 @@ env:
 
 jobs:
   deploy:
+    # Skip until the GCP variables are set on the repo (see README "Run it yourself").
+    if: vars.GCP_WIF_PROVIDER != ''
     runs-on: ubuntu-latest
     environment: dev
     steps:
