@@ -4,6 +4,11 @@ A private GKE setup on Google Cloud, built with Terraform, deployed from GitHub 
 
 I made this as a smaller, public version of what I work on at my job (DevOps for an enterprise AI platform). It uses the same ideas, but there's no client code in here.
 
+![Architecture](docs/architecture.png)
+
+<details>
+<summary>Same diagram as Mermaid</summary>
+
 ```mermaid
 flowchart LR
   dev[Developer] -->|git push| gh[GitHub Actions]
@@ -25,6 +30,8 @@ flowchart LR
   prom -->|scrape /metrics| app
   gke -->|egress only| nat --> internet((Internet))
 ```
+
+</details>
 
 ## What it shows
 
