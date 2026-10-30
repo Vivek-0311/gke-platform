@@ -28,4 +28,4 @@ Google Cloud Platform, Kubernetes, Terraform, CI/CD, DevOps, Docker, Grafana, Pr
 5. GCP console: the GKE cluster page showing private nodes.
 
 **Project URL**
-https://github.com/Vivek-0311/gke-platform-showcase
+https://github.com/Vivek-0311/gke-platform
