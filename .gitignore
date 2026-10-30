@@ -1,0 +1,13 @@
+.terraform/
+.terraform.lock.hcl.bak
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+tfplan
+crash.log
+.DS_Store
+
+# Go build output
+app/app
+app/demo-app

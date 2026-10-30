@@ -1,0 +1,4 @@
+project_id        = "my-gcp-project-id"
+github_repository = "Vivek-0311/gke-platform-showcase"
+# region          = "asia-south1"
+# zone            = "asia-south1-a"
